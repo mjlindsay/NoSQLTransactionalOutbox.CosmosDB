@@ -1,0 +1,40 @@
+name: Publish to NuGet
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]"
+
+jobs:
+  build-core:
+    runs-on: ubuntu-latest
+    name: Update NuGet
+    environment: Dev
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@main
+      
+      - name: Navigate to Solution
+        run: cd NoSQLTransactionalOutbox.CosmosDB
+
+      - name: Set VERSION variable from tag
+        run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
+
+      - name: Build
+        run: dotnet build --configuration Release /p:Version=${VERSION}
+      
+      # - name: Test
+      #   run: dotnet test --configuration Release /p:Version=${VERSION}
+
+      - name: Generate Package
+        run: dotnet pack -c Release -o out /p:Version=${VERSION}
+          
+      # - name: Install Nuget
+      #   uses: nuget/setup-nuget@v1
+        
+      - name: Add Private GitHub Repo to NuGet
+        run: dotnet nuget add source --username mjlindsay --password ${{ secrets.NUGET_PACKAGE_KEY }} --store-password-in-clear-text --name GPR "https://nuget.pkg.github.com/mjlindsay/index.json" 
+      
+      - name: Push Generated Package
+        run: dotnet nuget push out/*.nupkg --source "GPR" --skip-duplicate
