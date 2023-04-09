@@ -21,6 +21,9 @@ jobs:
       - name: Set VERSION variable from tag
         run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
 
+      - name: Add Private GitHub Repo to NuGet
+        run: dotnet nuget add source --username mjlindsay --password ${{ secrets.NUGET_PACKAGE_KEY }} --store-password-in-clear-text --name GPR "https://nuget.pkg.github.com/mjlindsay/index.json" 
+
       - name: Build
         run: dotnet build --configuration Release /p:Version=${VERSION}
       
@@ -32,9 +35,6 @@ jobs:
           
       # - name: Install Nuget
       #   uses: nuget/setup-nuget@v1
-        
-      - name: Add Private GitHub Repo to NuGet
-        run: dotnet nuget add source --username mjlindsay --password ${{ secrets.NUGET_PACKAGE_KEY }} --store-password-in-clear-text --name GPR "https://nuget.pkg.github.com/mjlindsay/index.json" 
       
       - name: Push Generated Package
         run: dotnet nuget push out/*.nupkg --source "GPR" --skip-duplicate
