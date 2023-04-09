@@ -12,7 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.32.3" />
-    <PackageReference Include="NoSQLTransactionalOutbox.Core" Version="0.0.1" />
+    <PackageReference Include="NoSQLTransactionalOutbox.Core" Version="0.0.2" />
   </ItemGroup>
 
 </Project>

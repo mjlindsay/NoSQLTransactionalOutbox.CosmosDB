@@ -8,17 +8,21 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using NoSQLTransactionalOutbox.Core.Event;
+using MediatR;
 
 namespace NoSQLTransactionalOutbox.CosmosDB.Context
 {
-    public class CosmosContainerContext : IContainerContext
+    public class DefaultCosmosContainerContext : IContainerContext
     {
-        Container Container { get; init; }
+        private Container _container;
+        private IMediator _mediator;
 
-        public List<DataPersistenceObject<IEntity>> DataObjects => throw new NotImplementedException();
+        private List<DataPersistenceObject<IEntity>> DataObjects = new();
 
-        public CosmosContainerContext(Container container) {
-            Container = container;
+        public DefaultCosmosContainerContext(Container container, IMediator mediator) {
+            _container = container;
+            _mediator = mediator;
         }
 
         public void Add(DataPersistenceObject<IEntity> entity) {
@@ -32,13 +36,13 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
         }
 
         public void Reset() {
-            throw new NotImplementedException();
+            DataObjects.Clear();           
         }
 
         private IEnumerable<IGrouping<string, DataPersistenceObject<IEntity>>> GetDataPersistenceObjectsByPartitionKey()
             => DataObjects.GroupBy(dpo => dpo.PartitionKey);
 
-        public async Task<List<DataPersistenceObject<IEntity>>> SaveChangesAsync(CancellationToken cancellationToken = default) {
+        public async Task<IEnumerable<DataPersistenceObject<IEntity>>> SaveChangesAsync(CancellationToken cancellationToken = default) {
             switch (DataObjects.Count) {
                 case 1:
                     var resultItem = await SaveSingleAsync(DataObjects.First(), cancellationToken);
@@ -70,11 +74,11 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
 
                 switch (dataPersistenceObject.EntityState) {
                     case EntityState.Created:
-                        response = await Container.CreateItemAsync(dataPersistenceObject, pk, reqOptions, cancellationToken);
+                        response = await _container.CreateItemAsync(dataPersistenceObject, pk, reqOptions, cancellationToken);
                         break;
                     case EntityState.Updated:
                     case EntityState.Deleted:
-                        response = await Container.ReplaceItemAsync(dataPersistenceObject, dataPersistenceObject.Id, pk, reqOptions, cancellationToken);
+                        response = await _container.ReplaceItemAsync(dataPersistenceObject, dataPersistenceObject.Id, pk, reqOptions, cancellationToken);
                         break;
                     default:
                         DataObjects.Clear();
@@ -96,7 +100,7 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
         private async Task<List<DataPersistenceObject<IEntity>>> SaveInTransactionalBatchAsync(CancellationToken cancellationToken = default) {
 
             var partitionKey = new PartitionKey(DataObjects.First().PartitionKey);
-            var transactionalBatch = Container.CreateTransactionalBatch(partitionKey);
+            var transactionalBatch = _container.CreateTransactionalBatch(partitionKey);
 
             foreach (var dataPersistenceObject in DataObjects) {
                 TransactionalBatchItemRequestOptions tbItemRequestOptions = new TransactionalBatchItemRequestOptions();
@@ -136,6 +140,18 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
             DataObjects.Clear();
 
             return resultObjects;
+        }
+
+        private void RaiseDomainEvents(IEnumerable<DataPersistenceObject<IEntity>> dataPersistenceObjects) {
+            var eventEmitters = dataPersistenceObjects
+                .Where(dpo => dpo.Data is IEventEmitter<IEvent> ee)
+                .Select(dpo => dpo.Data as IEventEmitter<IEvent>);
+
+            if (eventEmitters.Count() <= 0)
+                return;
+
+            foreach (var domainEvents in eventEmitters.SelectMany(eventEmitter => eventEmitter.DomainEvents))
+                _mediator.Publish(domainEvents);
         }
 
         private Exception EvaluateCosmosError(CosmosException error, Guid? id = null, string etag = null) {
