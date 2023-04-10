@@ -8,18 +8,18 @@ using System.Threading.Tasks;
 
 namespace NoSQLTransactionalOutbox.CosmosDB.Context
 {
-    public class DataPersistenceObject<T> : IDataPersistenceObject<T> where T : IEntity
+    public interface IDataPersistenceObject<out T> where T : IEntity
     {
         [JsonProperty]
-        public string Id { get; set; }
+        public string Id { get; }
 
         [JsonProperty]
-        public string PartitionKey { get; set; }
+        public string PartitionKey { get; }
 
         [JsonProperty]
-        public string EntityType { get; set; }
+        public string EntityType { get; }
 
-        public T Data { get; set; }
+        T Data { get; }
 
         [JsonProperty("_etag")]
         public string ETag { get; set; }
@@ -27,15 +27,15 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
         public EntityState EntityState { get; set; }
 
         [JsonProperty]
-        public int Ttl { get; set; }
+        public int Ttl { get; }
 
         [JsonProperty("_rid")]
-        public string RID { get; set; }
+        public string RID { get; }
 
         [JsonProperty("_ts")]
-        public string ItemLastUpdated { get; set; }
+        public string ItemLastUpdated { get; }
 
         [JsonProperty("_self")]
-        public string RawUrl { get; set; }
+        public string RawUrl { get; }
     }
 }
