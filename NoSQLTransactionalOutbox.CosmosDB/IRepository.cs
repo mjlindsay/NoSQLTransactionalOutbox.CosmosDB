@@ -12,8 +12,6 @@ namespace NoSQLTransactionalOutbox.CosmosDB
     {
         public void Create(TEntity entity);
 
-        public Task<DataPersistenceObject<TEntity>> CreateAsync(TEntity entity);
-
         public Task<DataPersistenceObject<TEntity>> ReadAsync(string id, string? etag = null);
 
         public Task<DataPersistenceObject<TEntity>> DeleteAsync(string id, string? etag = null);
