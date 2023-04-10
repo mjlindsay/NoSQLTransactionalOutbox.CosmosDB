@@ -11,15 +11,15 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
     public class DataPersistenceObject<T> where T : IEntity
     {
         [JsonProperty]
-        public string Id { get; private set; }
+        public string Id { get; set; }
 
         [JsonProperty]
-        public string PartitionKey { get; private set; }
+        public string PartitionKey { get; set; }
 
         [JsonProperty]
         public string EntityType { get; set; }
 
-        public T Data { get; private set; }
+        public T Data { get; set; }
 
         [JsonProperty("_etag")]
         public string ETag { get; set; }
