@@ -15,13 +15,14 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
 {
     public class DefaultCosmosContainerContext : IContainerContext
     {
-        private Container _container;
+        public Container Container { get; init; }
+
         private IMediator _mediator;
 
         private List<DataPersistenceObject<IEntity>> DataObjects = new();
 
         public DefaultCosmosContainerContext(Container container, IMediator mediator) {
-            _container = container;
+            Container = container;
             _mediator = mediator;
         }
 
@@ -74,11 +75,11 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
 
                 switch (dataPersistenceObject.EntityState) {
                     case EntityState.Created:
-                        response = await _container.CreateItemAsync(dataPersistenceObject, pk, reqOptions, cancellationToken);
+                        response = await Container.CreateItemAsync(dataPersistenceObject, pk, reqOptions, cancellationToken);
                         break;
                     case EntityState.Updated:
                     case EntityState.Deleted:
-                        response = await _container.ReplaceItemAsync(dataPersistenceObject, dataPersistenceObject.Id, pk, reqOptions, cancellationToken);
+                        response = await Container.ReplaceItemAsync(dataPersistenceObject, dataPersistenceObject.Id, pk, reqOptions, cancellationToken);
                         break;
                     default:
                         DataObjects.Clear();
@@ -100,7 +101,7 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
         private async Task<List<DataPersistenceObject<IEntity>>> SaveInTransactionalBatchAsync(CancellationToken cancellationToken = default) {
 
             var partitionKey = new PartitionKey(DataObjects.First().PartitionKey);
-            var transactionalBatch = _container.CreateTransactionalBatch(partitionKey);
+            var transactionalBatch = Container.CreateTransactionalBatch(partitionKey);
 
             foreach (var dataPersistenceObject in DataObjects) {
                 TransactionalBatchItemRequestOptions tbItemRequestOptions = new TransactionalBatchItemRequestOptions();
