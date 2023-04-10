@@ -13,26 +13,28 @@ using MediatR;
 
 namespace NoSQLTransactionalOutbox.CosmosDB.Context
 {
-    public class DefaultCosmosContainerContext : IContainerContext
-    {
+    public class DefaultCosmosContainerContext : IContainerContext {
         public Container Container { get; init; }
 
         private IMediator _mediator;
 
-        private List<DataPersistenceObject<IEntity>> DataObjects = new();
+        public List<IDataPersistenceObject<IEntity>> DataObjects { get; private set; } = new();
 
         public DefaultCosmosContainerContext(Container container, IMediator mediator) {
             Container = container;
             _mediator = mediator;
         }
 
-        public void Add(DataPersistenceObject<IEntity> entity) {
+        public void AddOrReplace(IDataPersistenceObject<IEntity> entity) {
             // Add only if we do not have another entity in the collection
-            int matchingEntityCount =
-                DataObjects.Where(dpo => dpo.Id == entity.Id && dpo.PartitionKey == entity.PartitionKey).Count();
+            int matchingEntityIndex =
+                DataObjects.FindIndex(0, searchDataObject => searchDataObject.Id == entity.Id);
 
-            if (matchingEntityCount == 0) {
+            if (matchingEntityIndex == -1) {
                 DataObjects.Add(entity);
+            } else {
+                DataObjects.RemoveAt(matchingEntityIndex);
+                DataObjects.Insert(matchingEntityIndex, entity);
             }
         }
 
@@ -40,25 +42,25 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
             DataObjects.Clear();           
         }
 
-        private IEnumerable<IGrouping<string, DataPersistenceObject<IEntity>>> GetDataPersistenceObjectsByPartitionKey()
+        private IEnumerable<IGrouping<string, IDataPersistenceObject<IEntity>>> GetDataPersistenceObjectsByPartitionKey()
             => DataObjects.GroupBy(dpo => dpo.PartitionKey);
 
-        public async Task<IEnumerable<DataPersistenceObject<IEntity>>> SaveChangesAsync(CancellationToken cancellationToken = default) {
+        public async Task<IEnumerable<IDataPersistenceObject<IEntity>>> SaveChangesAsync(CancellationToken cancellationToken = default) {
             switch (DataObjects.Count) {
                 case 1:
                     var resultItem = await SaveSingleAsync(DataObjects.First(), cancellationToken);
-                    var resultList = new List<DataPersistenceObject<IEntity>> { resultItem };
+                    var resultList = new List<IDataPersistenceObject<IEntity>> { resultItem };
                     return resultList;
                 case > 1:
                     var result = await SaveInTransactionalBatchAsync(cancellationToken);
                     return result;
                 default:
-                    return new List<DataPersistenceObject<IEntity>>();
+                    return new List<IDataPersistenceObject<IEntity>>();
             }
         }
 
-        private async Task<DataPersistenceObject<IEntity>> SaveSingleAsync(
-            DataPersistenceObject<IEntity> dataPersistenceObject,
+        private async Task<IDataPersistenceObject<IEntity>> SaveSingleAsync(
+            IDataPersistenceObject<IEntity> dataPersistenceObject,
             CancellationToken cancellationToken) {
 
             var reqOptions = new ItemRequestOptions {
@@ -71,7 +73,7 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
             var pk = new PartitionKey(dataPersistenceObject.PartitionKey);
 
             try {
-                ItemResponse<DataPersistenceObject<IEntity>> response;
+                ItemResponse<IDataPersistenceObject<IEntity>> response;
 
                 switch (dataPersistenceObject.EntityState) {
                     case EntityState.Created:
@@ -98,7 +100,7 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
             }
         }
 
-        private async Task<List<DataPersistenceObject<IEntity>>> SaveInTransactionalBatchAsync(CancellationToken cancellationToken = default) {
+        private async Task<List<IDataPersistenceObject<IEntity>>> SaveInTransactionalBatchAsync(CancellationToken cancellationToken = default) {
 
             var partitionKey = new PartitionKey(DataObjects.First().PartitionKey);
             var transactionalBatch = Container.CreateTransactionalBatch(partitionKey);
@@ -132,7 +134,7 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
 
             // Create a copy of our current data objects, update etags from transactional batch, then clear
             // the data objects and return the list copy.
-            var resultObjects = new List<DataPersistenceObject<IEntity>>(DataObjects);
+            var resultObjects = new List<IDataPersistenceObject<IEntity>>(DataObjects);
 
             for (int dataObjectIndex = 0; dataObjectIndex < DataObjects.Count; dataObjectIndex++) {
                 resultObjects[dataObjectIndex].ETag = transactionalBatchResult[dataObjectIndex].ETag;

@@ -12,9 +12,9 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
     {
         public Container Container { get; }
 
-        public void Add(DataPersistenceObject<IEntity> entity);
+        public void AddOrReplace(IDataPersistenceObject<IEntity> entity);
 
-        public Task<IEnumerable<DataPersistenceObject<IEntity>>> SaveChangesAsync(CancellationToken cancellationTOken = default);
+        public Task<IEnumerable<IDataPersistenceObject<IEntity>>> SaveChangesAsync(CancellationToken cancellationTOken = default);
 
         public void Reset();
     }
