@@ -1,4 +1,5 @@
-﻿using NoSQLTransactionalOutbox.Core.Entity;
+﻿using Microsoft.Azure.Cosmos;
+using NoSQLTransactionalOutbox.Core.Entity;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,6 +10,6 @@ namespace NoSQLTransactionalOutbox.CosmosDB
 {
     public interface IPartitionKeyProvider<TEntity> where TEntity : DomainEntity
     {
-        public string GetPartitionKey(TEntity entity);
+        public PartitionKey GetPartitionKey(TEntity entity);
     }
 }
