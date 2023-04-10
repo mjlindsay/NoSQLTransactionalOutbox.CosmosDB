@@ -9,8 +9,10 @@ using System.Threading.Tasks;
 
 namespace NoSQLTransactionalOutbox.CosmosDB
 {
-    public interface IUnitOfWork
+    public interface IUnitOfWorkFor<TEntity> where TEntity : DomainEntity
     {
-        Task<IEnumerable<DataPersistenceObject<IEntity>>> CommitAsync(CancellationToken cancellationToken = default);
+        IRepository<TEntity> EntityRepository { get; }
+
+        Task<IEnumerable<DataPersistenceObject<TEntity>>> CommitAsync(CancellationToken cancellationToken = default);
     }
 }
