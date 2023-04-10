@@ -27,7 +27,7 @@ namespace NoSQLTransactionalOutbox.CosmosDB.Context
         public EntityState EntityState { get; set; }
 
         [JsonProperty]
-        public string Ttl { get; set; }
+        public int Ttl { get; set; }
 
         [JsonProperty("_rid")]
         public string RID { get; set; }
