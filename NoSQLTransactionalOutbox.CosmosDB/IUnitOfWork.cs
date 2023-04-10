@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace NoSQLTransactionalOutbox.CosmosDB
 {
-    public interface IUnitOfWorkFor<TEntity> where TEntity : DomainEntity
+    public interface IUnitOfWork<TEntity> where TEntity : DomainEntity
     {
         IRepository<TEntity> EntityRepository { get; }
 

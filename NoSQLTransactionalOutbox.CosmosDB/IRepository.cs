@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace NoSQLTransactionalOutbox.CosmosDB
 {
-    public interface IRepositoryFor<TEntity> where TEntity : DomainEntity
+    public interface IRepository<TEntity> where TEntity : DomainEntity
     {
         public void Create(TEntity entity);
 
